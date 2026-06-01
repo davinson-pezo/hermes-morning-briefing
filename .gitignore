@@ -1,0 +1,62 @@
+# Hermes Morning Briefing - .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Configuración con API keys
+config.yaml
+.env
+*.env
+
+# Datos temporales
+data/raw/*.json
+data/translated/*.json
+data/logs/*.log
+
+# Outputs (opcional - si querés mantener histórico en git, comentar estas líneas)
+output/markdown/*.md
+output/audio/*.ogg
+output/audio/*.txt
+output/audio/*.aiff
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation builds
+docs/_build/

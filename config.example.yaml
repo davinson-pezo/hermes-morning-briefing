@@ -1,0 +1,114 @@
+# Hermes Morning Briefing - Configuración
+# Ubicación: ~/Documents/Hermes_docs/news/config.yaml
+
+# ==================== RSS FEEDS ====================
+
+rss_feeds:
+  INTERNACIONALES:
+    - https://feeds.bbci.co.uk/news/world/rss.xml
+    - https://rss.nytimes.com/services/xml/rss/nyt/World.xml
+  
+  ALEMANIA:
+    - https://www.spiegel.de/schlagzeilen/index.rss
+    - https://www.handelsblatt.com/contentexport/feed/top-themen
+  
+  CIENCIA:
+    - https://rss.sciencedaily.com/all.xml
+    - https://www.nature.com/nature.rss
+  
+  BIOTECNOLOGÍA:
+    - https://rss.sciencedaily.com/mostpopular.xml
+  
+  TECNOLOGÍA:
+    - https://www.xataka.com/rss
+    - https://es.gizmodo.com/rss
+  
+  IA / MACHINE LEARNING:
+    - https://arxiv.org/rss/cs.AI
+    - https://huggingface.co/blog/feed.xml
+  
+  DESARROLLO:
+    - https://github.blog/feed/
+    - https://stackoverflow.blog/feed/
+
+# ==================== CLIMA ====================
+
+weather:
+  location:
+    name: "Jülich, Alemania"
+    latitude: 50.9236
+    longitude: 6.3628
+    timezone: "Europe/Berlin"
+  api: "https://api.open-meteo.com/v1/forecast"
+
+# ==================== TTS (Text-to-Speech) ====================
+
+tts:
+  provider: "macos_say"  # macos_say, edge, openai
+  voice: "Monica"  # macOS: Monica, Diego, etc.
+  output_format: "ogg"  # ogg para Telegram voice bubble
+  audio_params:
+    codec: "libopus"
+    bitrate: "32k"
+    sample_rate: 48000  # 48kHz para Telegram
+    channels: 1  # mono
+
+# ==================== TELEGRAM ====================
+
+telegram:
+  enabled: true
+  target: "telegram"  # o "telegram:chat_id" para canal específico
+  send_text: true
+  send_audio: true
+  audio_as_voice: true  # true = voice bubble con barra de progreso
+
+# ==================== CLEANUP POLICY ====================
+
+cleanup:
+  enabled: true
+  schedule: "weekly"  # weekly o daily
+  retention_days:
+    data_raw: 7
+    data_translated: 7
+    data_logs: 30
+    output_markdown: 30
+    output_audio: 30
+    output_audio_scripts: 30
+
+# ==================== PATHS ====================
+
+paths:
+  base: "/Users/davinson/Documents/Hermes_docs/news"
+  scripts: "./scripts"
+  data_raw: "./data/raw"
+  data_translated: "./data/translated"
+  data_logs: "./data/logs"
+  output_markdown: "./output/markdown"
+  output_audio: "./output/audio"
+
+# ==================== LLM ====================
+
+llm:
+  provider: "qwen3.5:cloud"  # o "gemini-3-flash-preview:latest"
+  temperature: 0.3
+  max_tokens: 2000
+  timeout_seconds: 90
+  # api_key: "TU_API_KEY_AQUI"  # Si usás API directa
+
+# ==================== WORKFLOW ====================
+
+workflow:
+  name: "Morning Briefing"
+  version: "1.0.0"
+  schedule: "0 8 * * 1-5"  # Lun-Vie 8:00 AM
+  timezone: "Europe/Berlin"
+  steps:
+    - name: "fetch"
+      script: "01_fetch_news.py"
+      timeout: 60
+    - name: "translate"
+      script: "02_translate_news.py"
+      timeout: 120
+    - name: "publish"
+      script: "03_publish.py"
+      timeout: 90

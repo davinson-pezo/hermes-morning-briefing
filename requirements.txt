@@ -1,0 +1,17 @@
+# Hermes Morning Briefing - Dependencias
+# pip install -r requirements.txt
+
+# RSS Feed Parser
+feedparser>=6.0.10
+
+# HTTP Client para LLM API
+httpx>=0.27.0
+
+# YAML Configuration
+pyyaml>=6.0.1
+
+# Opcional: Edge TTS (si no usás macOS)
+# edge-tts>=6.1.0
+
+# Opcional: OpenAI TTS (si querés alta calidad)
+# openai>=1.0.0
