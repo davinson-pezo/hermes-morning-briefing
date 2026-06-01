@@ -516,8 +516,6 @@ Mirá mis otros repositorios en GitHub:
 | **[mcp-scientific-rag](https://github.com/davinson-pezo/mcp-scientific-rag)** | RAG 100% local para procesar literatura científica con MCP |
 | **[hermes-pixel-ui](https://github.com/davinson-pezo/hermes-pixel-ui)** | Dashboard pixel-art para visualizar sesiones de Hermes Agent |
 | **[jarvis](https://github.com/davinson-pezo/jarvis)** | Asistente de voz AI multi-plataforma inspirado en Iron Man |
-| **[watch-says-privacy](https://github.com/davinson-pezo/watch-says-privacy)** | App watchOS — Privacy policy documentation |
-| **[capibara-adventure-privacy](https://github.com/davinson-pezo/capibara-adventure-privacy)** | App watchOS — Privacy policy documentation |
 
 ---
 
