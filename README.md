@@ -492,7 +492,7 @@ MIT License — ver [LICENSE](LICENSE) para detalles.
 | **Rol** | Scientific Consultant |
 | **GitHub** | [@davinson-pezo](https://github.com/davinson-pezo) |
 | **Email** | info@dataquorum.net |
-| **Website** | [www.dataquorum.net](https://www.dataquorum.net) |
+| **Website** | [dataquorum.net](https://dataquorum.net) |
 | **ORCID** | [0000-0001-8978-9498](https://orcid.org/0000-0001-8978-9498) |
 
 ---
