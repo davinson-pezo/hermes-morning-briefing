@@ -501,7 +501,7 @@ MIT License — ver [LICENSE](LICENSE) para detalles.
 
 Si este workflow te ahorra tiempo cada mañana y querés apoyar el desarrollo, podés invitarme un café:
 
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://www.paypal.com/paypalme/davinson)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=davinson@gmail.com)
 
 **PayPal:** `davinson@gmail.com`
 
