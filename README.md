@@ -26,8 +26,11 @@ Sistema automatizado que cada mañana (Lun-Vie, 8:00 AM):
 
 ## 🎯 Características Principales
 
-- ✅ **Arquitectura modular** — 4 scripts independientes (fetch, translate, publish, orchestrator)
+- ✅ **Arquitectura modular** — 5 scripts independientes (validate, fetch, translate, publish, orchestrator)
 - ✅ **Estado persistente** — JSONs intermedios permiten recovery si algo falla
+- ✅ **Filtro de antigüedad >7d** — Descarta items con pubDate > 7 días para no publicar noticias añejas si un feed queda congelado
+- ✅ **Auditoría de feeds** — `00_validate_feeds.py` valida HTTP + parseo + frescura antes de incorporar fuentes nuevas
+- ✅ **Deduplicación** — Elimina items repetidos por URL o título normalizado (algunos feeds duplican entries)
 - ✅ **Cleanup automático** — Borra archivos > 30 días (semanal, domingos 6 AM)
 - ✅ **Sin dependencias complejas** — Python stdlib + feedparser + httpx
 - ✅ **Fácil de extender** — Agregar nuevas categorías o fuentes es trivial
@@ -131,6 +134,11 @@ python3 scripts/cleanup_old_files.py --dry-run
 
 # Limpieza manual (real)
 python3 scripts/cleanup_old_files.py
+
+# Auditar feeds RSS (HTTP + parseo + frescura, antes de añadir feeds nuevos)
+python3 scripts/00_validate_feeds.py                  # solo feeds actuales
+python3 scripts/00_validate_feeds.py --candidates     # + candidatos a probar
+python3 scripts/00_validate_feeds.py --days 14        # umbral personalizado
 ```
 
 ### Automatizar con Hermes Cron
@@ -163,7 +171,8 @@ hermes-morning-briefing/
 │
 ├── scripts/
 │   ├── orchestrator.py          # Orquestador principal (ejecuta secuencia)
-│   ├── 01_fetch_news.py         # Fetch RSS feeds + clima (Open-Meteo)
+│   ├── 00_validate_feeds.py     # Auditoría de feeds (HTTP + parseo + frescura)
+│   ├── 01_fetch_news.py         # Fetch RSS + clima (con filtro de antigüedad >7d)
 │   ├── 02_translate_news.py     # Traducción con LLM (Qwen/Gemini)
 │   ├── 03_publish.py            # Generar audio + enviar a Telegram
 │   └── cleanup_old_files.py     # Limpieza semanal (retención)
@@ -453,6 +462,7 @@ ls -la data/logs/
 |---------|-------|---------|
 | **v1.0.0** | 2026-05-28 | Versión inicial, arquitectura modular con orquestador |
 | **v1.1.0** | 2026-06-01 | Corrección: output completo a Telegram, deliver: local en cronjob |
+| **v1.2.0** | 2026-06-15 | Bugfix CIENCIA/BIOTECNOLOGÍA: feeds muertos detectados (sciencedaily all.xml 376d, mostpopular.xml 404, xataka 404). Filtro de antigüedad >7d en `01_fetch_news.py`. Nuevo `00_validate_feeds.py` para auditar feeds. Deduplicación por URL/título. BIOTECNOLOGÍA: feeds dedicados arXiv q-bio.QM + q-bio.NC. EXCLUDE_KEYWORDS ampliado (dónde ver, en vivo, etc) |
 
 ---
 
@@ -521,4 +531,4 @@ Mirá mis otros repositorios en GitHub:
 
 **Hecho con ❤️ en Jülich, Alemania**
 
-*Última actualización: 2026-06-01*
+*Última actualización: 2026-06-15*

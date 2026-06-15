@@ -34,6 +34,8 @@ config.yaml
 data/raw/*.json
 data/translated/*.json
 data/logs/*.log
+data/logs/*.txt
+data/logs/debug_*
 
 # Outputs (opcional - si querés mantener histórico en git, comentar estas líneas)
 output/markdown/*.md
@@ -43,6 +45,7 @@ output/audio/*.aiff
 
 # macOS
 .DS_Store
+**/.DS_Store
 .AppleDouble
 .LSOverride
 

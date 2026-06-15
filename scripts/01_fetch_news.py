@@ -13,15 +13,22 @@ Ejecutar:
 import os
 import sys
 import json
+import re
 import argparse
 import subprocess
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 # ==================== CONFIGURACIÓN ====================
 
 BASE_DIR = Path(__file__).parent.parent
+
+# Frescura máxima de items (en días). Si un item tiene pubDate más viejo,
+# se descarta para que el briefing NO publique noticias añejas cuando
+# un feed quede congelado. Default 7d.
+MAX_ITEM_AGE_DAYS = 7
 
 # Feeds RSS por categoría (desde config.yaml)
 # Estructura: {'category': {'feeds': [...], 'sentiment': 'mixed' | 'positive' | 'negative'}}
@@ -42,25 +49,45 @@ RSS_FEEDS = {
     },
     'CIENCIA': {
         'feeds': [
-            'https://rss.sciencedaily.com/all.xml',
-            'https://www.nature.com/nature.rss',
-            # Fuentes positivas de ciencia
-            'https://www.sciencedaily.com/rss/health_medicine.xml',  # Avances médicos
+            # Phys.org - noticias generales de ciencia (fresco, 30 items/día)
+            'https://phys.org/rss-feed/',
+            # arXiv q-bio - preprints biología/molecular
+            'https://export.arxiv.org/rss/q-bio',
+            # ScienceDaily health/medicine (verificado OK 2026-06-15)
+            'https://www.sciencedaily.com/rss/health_medicine.xml',
         ],
         'sentiment': 'positive',  # La ciencia suele ser positiva (descubrimientos, avances)
     },
     'BIOTECNOLOGÍA': {
+        # Feeds dedicados biotech + arXiv sub-categorías biológicas
+        # (los 3 son OK, verificado 2026-06-15 con 00_validate_feeds.py)
         'feeds': [
-            'https://rss.sciencedaily.com/mostpopular.xml',
+            'https://export.arxiv.org/rss/q-bio.QM',  # Quantitative Biology - molecular
+            'https://export.arxiv.org/rss/q-bio.NC',  # Quantitative Biology - neurons/cognition
+            'https://www.sciencedaily.com/rss/health_medicine.xml',
         ],
-        'sentiment': 'positive',  # Avances biomédicos
+        'sentiment': 'positive',
+        'filter_keywords': [  # al menos 1 debe matchear (case-insensitive)
+            'biotecnología', 'biotechnology', 'genoma', 'genome', 'genomic',
+            'crispr', 'células madre', 'stem cell', 'stem-cell',
+            'proteína', 'protein', 'proteomic', 'proteómica',
+            'arn', 'adn', 'rna', 'dna', 'mrna', 'sirna',
+            'microbioma', 'microbiome', 'fármaco', 'farmaco', 'pharmaceutical',
+            'vacuna', 'vaccine', 'anticuerpo', 'antibody', 'monoclonal',
+            'biología molecular', 'molecular biology', 'biomolecular',
+            'terapia génica', 'gene therapy', 'genetic',
+            'biología sintética', 'synthetic biology',
+            'cultivo celular', 'cell culture', 'cell biology',
+            'bioproces', 'bioreactor', 'biomarker', 'biomarcador',
+            'cell', 'cellular', 'tissue', 'tejido',
+            'organoid', 'órgano', 'organ',
+            'enzyme', 'enzima', 'metabol', 'fermentat',
+        ],
     },
     'TECNOLOGÍA': {
         'feeds': [
-            'https://www.xataka.com/rss',
             'https://es.gizmodo.com/rss',
-            # Fuentes positivas de tecnología
-            'https://www.theverge.com/rss/index.xml',  # Innovaciones
+            'https://www.theverge.com/rss/index.xml',
         ],
         'sentiment': 'mixed',
     },
@@ -83,19 +110,26 @@ RSS_FEEDS = {
 # ==================== BALANCE 50/50 ====================
 
 # Fuentes EXCLUSIVAS de noticias positivas (Good News)
+# Verificado OK 2026-06-15:
+#   - goodnewsnetwork.org  → 50 items/día, fresco
+#   - positive.news        → 10 items, 2d
+# Eliminado: solutionsjournalism.org/feed/ (404 desde 2026-06-15)
 POSITIVE_NEWS_SOURCES = [
     # Good News Network - noticias positivas verificadas
     'https://www.goodnewsnetwork.org/feed/',
     # Positive News - periodismo constructivo
     'https://www.positive.news/feed/',
-    # Solutions Journalism Network
-    'https://www.solutionsjournalism.org/feed/',
 ]
 
 # Palabras clave para excluir (ruido, no noticias relevantes)
 EXCLUDE_KEYWORDS = [
     'celebrity', 'sport', 'fußball', 'bundesliga',
     'mord', 'unfall', 'wetter', 'lotto',
+    # Deportes/streaming en vivo (detectado en Gizmodo ES, 2026-06-15)
+    'dónde ver', 'donde ver', 'en directo', 'en vivo',
+    'premier league', 'la liga', 'champions league',
+    # Entretenimiento puro
+    'reality show', 'reality', 'telenovela',
 ]
 
 # Palabras clave para detectar noticias POSITIVAS
@@ -253,19 +287,28 @@ def parse_rss(xml_content, limit=10):
             title_elem = item.find('title')
             link_elem = item.find('link')
             desc_elem = item.find('description')
-            
+            # Intentar varios tags de fecha (RSS 2.0, Dublin Core, Atom)
+            pub_date = None
+            for date_tag in ('pubDate', 'dc:date', 'date',
+                             '{http://purl.org/dc/elements/1.1/}date'):
+                el = item.find(date_tag)
+                if el is not None and el.text:
+                    pub_date = el.text.strip()
+                    break
+
             if title_elem is not None and link_elem is not None:
                 title = (title_elem.text or '').strip()
                 link = (link_elem.text or '').strip()
                 description = (desc_elem.text or '') if desc_elem is not None else ''
-                
+
                 # Limpiar HTML del description
                 description = clean_html(description)
-                
+
                 items.append({
                     'title': title,
                     'description': description[:500],  # Truncar a 500 chars
                     'url': link,
+                    'pub_date': pub_date,  # None si no hay fecha
                 })
     
     except ET.ParseError as e:
@@ -310,6 +353,39 @@ def clean_html(text):
     text = re.sub(r'\s+', ' ', text).strip()
     
     return text
+
+def is_fresh(item, max_age_days=MAX_ITEM_AGE_DAYS):
+    """
+    Devuelve True si el item es más reciente que max_age_days días,
+    o si no se puede parsear su fecha (asumimos fresco: no descartar
+    un item por no tener pubDate — sólo descartamos si sabemos que es viejo).
+    """
+    pub = item.get('pub_date')
+    if not pub:
+        return True  # sin fecha -> asumir fresco, no penalizar
+    try:
+        # RFC 822 (pubDate típico)
+        d = parsedate_to_datetime(pub)
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        d = d.astimezone(timezone.utc)
+    except Exception:
+        try:
+            # ISO 8601 fallback
+            d = datetime.fromisoformat(pub.replace('Z', '+00:00'))
+        except Exception:
+            return True  # fecha no parseable -> asumir fresco
+    age_days = (datetime.now(timezone.utc) - d).days
+    return age_days <= max_age_days
+
+
+def matches_keywords(item, keywords):
+    """Devuelve True si item.title+description contiene al menos 1 keyword (case-insensitive)."""
+    if not keywords:
+        return True
+    text = (item.get('title', '') + ' ' + item.get('description', '')).lower()
+    return any(kw.lower() in text for kw in keywords)
+
 
 def is_relevant(title, description, category):
     """Filtra noticias irrelevantes o spam."""
@@ -383,16 +459,33 @@ def fetch_all_news():
         
         for feed_url in feeds:
             xml_content = fetch_rss_feed(feed_url)
-            
+
             if xml_content:
                 items = parse_rss(xml_content, limit=15)  # Obtener más para filtrar
-                
+
+                # Filtro de frescura: descarta items más viejos que MAX_ITEM_AGE_DAYS
+                fresh_items = [it for it in items if is_fresh(it)]
+                stale_count = len(items) - len(fresh_items)
+                if stale_count > 0:
+                    print(f"      ⏰ {feed_url.split('/')[2]}: {stale_count}/{len(items)} items descartados (> {MAX_ITEM_AGE_DAYS}d)")
+
+                # Filtro de keywords (sólo si la categoría las define)
+                filter_kw = config.get('filter_keywords')
+                if filter_kw:
+                    kw_items = [it for it in fresh_items if matches_keywords(it, filter_kw)]
+                    # Si ninguna matchea, fallback a los fresh sin filtrar (no dejar sección vacía)
+                    items_after_kw = kw_items if kw_items else fresh_items
+                    if not kw_items and fresh_items:
+                        print(f"      🔬 {category}: 0/{len(fresh_items)} matchean keywords biotech, fallback")
+                else:
+                    items_after_kw = fresh_items
+
                 # Clasificar cada noticia
-                for item in items:
+                for item in items_after_kw:
                     if is_relevant(item['title'], item['description'], category):
                         sentiment = classify_sentiment(item['title'], item['description'])
                         item['sentiment'] = sentiment
-                        
+
                         if sentiment == 'positive':
                             positive_items.append(item)
                         elif sentiment == 'negative':
@@ -437,7 +530,24 @@ def fetch_all_news():
         
         # Limitar a 10 noticias por categoría
         all_items = all_items[:10]
-        
+
+        # Deduplicación final: por URL normalizada y por título normalizado
+        # (algunos feeds repiten el mismo item con URL ligeramente distinta)
+        seen_urls = set()
+        seen_titles = set()
+        unique_items = []
+        for it in all_items:
+            url = (it.get('url') or '').split('?')[0].split('#')[0].rstrip('/').lower()
+            title_key = re.sub(r'\s+', ' ', (it.get('title') or '').lower()).strip()[:80]
+            if url in seen_urls or title_key in seen_titles:
+                continue
+            seen_urls.add(url)
+            seen_titles.add(title_key)
+            unique_items.append(it)
+        if len(unique_items) < len(all_items):
+            print(f"      🧹 {len(all_items) - len(unique_items)} duplicados eliminados")
+        all_items = unique_items
+
         # Contar por sentimiento para el reporte
         pos_count = sum(1 for item in all_items if item.get('sentiment') == 'positive')
         neg_count = sum(1 for item in all_items if item.get('sentiment') == 'negative')
@@ -451,7 +561,7 @@ def fetch_all_news():
     print(f"   📰 Obteniendo buenas noticias adicionales...")
     good_news_items = []
     
-    for feed_url in POSITIVE_NEWS_SOURCES[:2]:  # Limitar a 2 fuentes para no saturar
+    for feed_url in POSITIVE_NEWS_SOURCES:  # sólo 2 fuentes (2026-06-15)
         xml_content = fetch_rss_feed(feed_url)
         if xml_content:
             items = parse_rss(xml_content, limit=5)
