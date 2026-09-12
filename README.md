@@ -511,7 +511,7 @@ MIT License — ver [LICENSE](LICENSE) para detalles.
 
 Si este workflow te ahorra tiempo cada mañana y querés apoyar el desarrollo, podés invitarme un café:
 
-[![PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/dpezo)
+[![PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/dpezo/5EUR)
 
 **PayPal:** `davinson@gmail.com`
 
